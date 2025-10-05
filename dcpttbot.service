@@ -1,0 +1,14 @@
+[Unit]
+Description=Discord Bot - dcpttbot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/dcptt
+ExecStart=/root/dcptt/venv/bin/python /root/dcptt/bot.py
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
