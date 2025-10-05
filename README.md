@@ -9,6 +9,7 @@
 ```
 # 使用指南
 需求
+
 1.Python 3.10+
 
 2.一個擁有管理權限的伺服器
@@ -17,9 +18,7 @@
 
 # 1. 在 Discord Developer Portal 建立 Bot
 
-前往 https://discord.com/developers/applications
-
- → New Application → 取名（例如：PTT Crawler）。
+前往 https://discord.com/developers/applications→ New Application → 取名（例如：PTT Crawler）。
 
 左側 Bot → Add Bot。
 
