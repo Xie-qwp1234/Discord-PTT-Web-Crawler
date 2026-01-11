@@ -4,7 +4,24 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import asyncio
+from flask import Flask
+from threading import Thread
+import os
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "I'm alive!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))  # Render 會給 PORT
+    app.run(host="0.0.0.0", port=port)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.daemon = True
+    t.start()
 # 讀取設定檔
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -75,5 +92,7 @@ async def on_ready():
 
         await asyncio.sleep(300)  # 每 5 分鐘掃一次
 
+keep_alive()
 bot.run(TOKEN)
+
 
