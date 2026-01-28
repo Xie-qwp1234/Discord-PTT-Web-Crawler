@@ -7,19 +7,18 @@ import asyncio
 from flask import Flask
 from threading import Thread
 import os
-
+# 啟動迷你網頁，讓 Render 持續上線
 app = Flask(__name__)
 
-@app.route("/")
+@app.route('/')
 def home():
     return "I'm alive!"
 
-def run_web():
-    port = int(os.environ.get("PORT", 8080))  # Render 會給 PORT
-    app.run(host="0.0.0.0", port=port)
+def run():
+    app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
-    t = Thread(target=run_web)
+    t = Thread(target=run)
     t.daemon = True
     t.start()
 # 讀取設定檔
@@ -94,5 +93,3 @@ async def on_ready():
 
 keep_alive()
 bot.run(TOKEN)
-
-
