@@ -8,7 +8,7 @@ CHANNEL_ID=你的頻道ID
 ## 使用指南
 需求
 
-1. Python 3.10+
+1. Python 3.10+（<3.13）
 2. 一個擁有管理權限的伺服器
 3. 能連外網的主機（Linux）
 
@@ -43,7 +43,7 @@ Embed Links（16384）
 ## 2. 取得 Discord 頻道 ID
 Discord 用戶端 &rarr; 設定 &rarr; 進階 &rarr; 開啟 開發者模式。
 
-右鍵你的目標頻道 &rarr; Copy ID，貼到 .env 的 DISCORD_CHANNEL_ID。
+右鍵你的目標頻道 &rarr; Copy ID，貼到 .env 的 CHANNEL_ID。
 
 ## 3. 下載與安裝專案
 ```bash
