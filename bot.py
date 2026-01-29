@@ -19,33 +19,37 @@ TOKEN = os.getenv('TOKEN')
 RAW_ID = os.getenv('CHANNEL_ID')
 CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
 
-# --- Flask Keep Alive ---
+# --- Flask Web Server ---
 app = Flask(__name__)
 
 
-def home():
+@app.route('/')
+def health_check():
+    # 當 Bot 成功登入 (is_ready) 時才回傳 200，否則回傳 503
     if bot.is_ready():
         return '✅ PTT Bot is online and healthy!', 200
     else:
-        return '❌ Bot is offline or starting up...', 503
+        return '❌ Bot is offline or rate limited', 503
 
 
-def run():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+def run_flask():
+    # Render 預設使用 PORT 環境變數
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
 
 
 def keep_alive():
-    t = Thread(target=run, daemon=True)
+    t = Thread(target=run_flask, daemon=True)
     t.start()
 
 
-# --- 爬蟲邏輯 ---
+# --- 機器人與爬蟲邏輯 ---
 PTT_URL = 'https://www.ptt.cc/bbs/PC_Shopping/index.html'
 seen_links = set()
 
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # 開啟訊息內容意圖
+
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 
@@ -67,19 +71,24 @@ def fetch_articles():
             if not a_tag:
                 continue
 
-            href = f'https://www.ptt.cc{a_tag["href"]}'
-            title = a_tag.text.strip()
-
             nrec_tag = entry.select_one('div.nrec')
-            push = nrec_tag.text.strip() if nrec_tag else '0'
+            push_count = nrec_tag.text.strip() if nrec_tag else '0'
 
             author_tag = entry.select_one('div.meta .author')
-            author = author_tag.text.strip() if author_tag else 'unknown'
+            author_name = author_tag.text.strip() if author_tag else 'unknown'
+
+            href = f'https://www.ptt.cc{a_tag["href"]}'
+            title = a_tag.text.strip()
 
             if href not in seen_links:
                 seen_links.add(href)
                 new_articles.append(
-                    {'title': title, 'href': href, 'author': author, 'push': push}
+                    {
+                        'title': title,
+                        'href': href,
+                        'author': author_name,
+                        'push': push_count,
+                    }
                 )
 
         return new_articles[::-1]
@@ -94,26 +103,29 @@ async def check_ptt():
     channel = cast(TextChannel, raw_channel)
 
     if not channel:
+        print(f'⚠️ 找不到頻道: {CHANNEL_ID}')
         return
 
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'], url=article['href'], color=0x00FF00
+            title=article['title'],
+            url=article['href'],
+            color=0x1D9BF0,
         )
         embed.add_field(name='作者', value=article['author'], inline=True)
         embed.add_field(name='推文', value=article['push'], inline=True)
 
         try:
             await channel.send(embed=embed)
-            await asyncio.sleep(1)
+            await asyncio.sleep(1)  # 延遲 1 秒避免觸發速率限制
         except Exception as e:
             print(f'❌ 發送失敗: {e}')
 
 
 @bot.event
 async def on_ready():
-    print(f'機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
+    print(f'✅ 機器人 {bot.user} 已成功上線 (Python {sys.version.split()[0]})')
     fetch_articles()
     if not check_ptt.is_running():
         check_ptt.start()
@@ -121,13 +133,14 @@ async def on_ready():
 
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：環境變數未設定')
+        print('❌ 錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
     else:
         keep_alive()
         try:
             bot.run(TOKEN)
         except discord.errors.HTTPException as e:
             if e.status == 429:
-                print('❌ 遭到 Rate Limit，請嘗試更換 Render Region 或稍後再試。')
-            else:
-                print(f'❌ 發生 HTTP 錯誤: {e}')
+                print(
+                    '❌ 遭 Discord 限制 (429 Rate Limit)。Web 狀態已同步設為紅燈 (503)。'
+                )
+            raise e
