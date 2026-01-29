@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "N", "UP", "FLY", "B", "RUF", "SIM", "PIE", "ARG"]
+ignore = ["E501", "T201", "D100", "RUF001", "RUF002", "RUF003"]
+
+fixable = ["ALL"]
+unfixable = []
+extend-safe-fixes = ["UP006", "UP007"]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+lines-after-imports = 2
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
