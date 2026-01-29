@@ -96,7 +96,7 @@ async def check_ptt():
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'], url=article['href'], color=0x1D9BF0
+            title=article['title'], url=article['href'], color=0x00ff00
         )
         embed.add_field(name='作者', value=article['author'], inline=True)
         embed.add_field(name='推文', value=article['push'], inline=True)
@@ -122,4 +122,5 @@ if __name__ == '__main__':
     else:
         keep_alive()
         bot.run(TOKEN)
+
 
