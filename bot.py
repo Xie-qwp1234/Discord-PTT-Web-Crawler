@@ -109,9 +109,7 @@ async def check_ptt():
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'],
-            url=article['href'],
-            color=0x1D9BF0,
+            title=article['title'], url=article['href'], color=0x1D9BF0
         )
         embed.add_field(name='作者', value=article['author'], inline=True)
         embed.add_field(name='推文', value=article['push'], inline=True)
@@ -140,7 +138,5 @@ if __name__ == '__main__':
             bot.run(TOKEN)
         except discord.errors.HTTPException as e:
             if e.status == 429:
-                print(
-                    '❌ 遭 Discord 限制 (429 Rate Limit)。Web 狀態已同步設為紅燈 (503)。'
-                )
+                print('❌ 遭 Discord 限制 (429 Rate Limit)')
             raise e
