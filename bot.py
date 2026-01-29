@@ -23,14 +23,16 @@ CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
 app = Flask(__name__)
 
 
-@app.route('/')
 def home():
-    return 'PTT Bot is running!'
+    if bot.is_ready():
+        return '✅ PTT Bot is online and healthy!', 200
+    else:
+        return '❌ Bot is offline or starting up...', 503
 
 
 def run():
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 
 def keep_alive():
