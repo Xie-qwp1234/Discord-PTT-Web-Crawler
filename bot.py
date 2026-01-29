@@ -98,8 +98,8 @@ async def check_ptt():
         embed = discord.Embed(
             title=article['title'], url=article['href'], color=0x1D9BF0
         )
-        embed.add_field(name='👤 作者', value=article['author'], inline=True)
-        embed.add_field(name='🔥 推文', value=article['push'], inline=True)
+        embed.add_field(name='作者', value=article['author'], inline=True)
+        embed.add_field(name='推文', value=article['push'], inline=True)
 
         try:
             await channel.send(embed=embed)
@@ -110,7 +110,7 @@ async def check_ptt():
 
 @bot.event
 async def on_ready():
-    print(f'✅ 機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
+    print(f'機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
     fetch_articles()
     if not check_ptt.is_running():
         check_ptt.start()
@@ -118,7 +118,8 @@ async def on_ready():
 
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
+        print('錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
     else:
         keep_alive()
         bot.run(TOKEN)
+
