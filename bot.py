@@ -27,9 +27,9 @@ app: Flask = Flask(__name__)
 @app.route('/')
 def health_check() -> tuple[str, int]:
     if bot.is_ready():
-        return '✅ PTT Bot is online and healthy!', 200
+        return 'PTT Bot is online and healthy!', 200
     else:
-        return '❌ Bot is offline or rate limited', 503
+        return 'Bot is offline or rate limited', 503
 
 
 def run_flask() -> None:
@@ -91,7 +91,7 @@ def fetch_articles() -> list[dict[str, str]]:
 
         return new_articles[::-1]
     except Exception as e:
-        print(f'❌ 爬取失敗: {e}')
+        print(f'爬取失敗: {e}')
         return []
 
 
@@ -103,7 +103,7 @@ async def check_ptt() -> None:
     channel: TextChannel = cast(TextChannel, raw_channel)
 
     if not channel:
-        print(f'⚠️ 找不到頻道: {CHANNEL_ID}')
+        print(f'找不到頻道: {CHANNEL_ID}')
         return
 
     articles: list[dict[str, str]] = fetch_articles()
@@ -118,12 +118,12 @@ async def check_ptt() -> None:
             await channel.send(embed=embed)
             await asyncio.sleep(1)
         except Exception as e:
-            print(f'❌ 發送失敗: {e}')
+            print(f'發送失敗: {e}')
 
 
 @bot.event
 async def on_ready() -> None:
-    print(f'✅ 機器人 {bot.user} 已成功上線 (Python {sys.version.split()[0]})')
+    print(f'機器人 {bot.user} 已成功上線 (Python {sys.version.split()[0]})')
     fetch_articles()
     if not check_ptt.is_running():
         check_ptt.start()
@@ -131,12 +131,13 @@ async def on_ready() -> None:
 
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
+        print('錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
     else:
         keep_alive()
         try:
             bot.run(TOKEN)
         except discord.errors.HTTPException as e:
             if e.status == 429:
-                print('❌ 遭 Discord 限制 (429 Rate Limit)')
+                print('遭 Discord 限制 (429 Rate Limit)')
             raise e
+
