@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from threading import Thread
 from typing import cast
 
@@ -14,21 +15,21 @@ from flask import Flask
 
 # --- 載入環境變數 ---
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
-# 確保 CHANNEL_ID 存在且為整數
-RAW_CHANNEL_ID = os.getenv('CHANNEL_ID')
-CHANNEL_ID = int(RAW_CHANNEL_ID) if RAW_CHANNEL_ID else 0
+TOKEN = os.getenv('DISCORD_TOKEN')
+RAW_ID = os.getenv('CHANNEL_ID')
+CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
 
-# --- Flask Keep Alive 部分 ---
+# --- Flask Keep Alive ---
 app = Flask(__name__)
 
 
 @app.route('/')
 def home():
-    return "I'm alive!"
+    return 'Bot is running!'
 
 
 def run():
+    # Render 會自動分配 PORT
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
@@ -39,14 +40,11 @@ def keep_alive():
     t.start()
 
 
-# --- 機器人邏輯 ---
+# --- 爬蟲邏輯 ---
 PTT_URL = 'https://www.ptt.cc/bbs/PC_Shopping/index.html'
 seen_links = set()
 
 intents = discord.Intents.default()
-# 如果你的 Bot 需要處理指令，建議開啟 message_content
-# intents.message_content = True
-
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 
@@ -92,7 +90,7 @@ def fetch_articles():
 
 @tasks.loop(minutes=5)
 async def check_ptt():
-    # 解決 Pylance 警告：強制轉型為 TextChannel
+    # 強制轉型解決 Pylance 的頻道類型警告
     raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
     channel = cast(TextChannel, raw_channel)
 
@@ -103,35 +101,34 @@ async def check_ptt():
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'], url=article['href'], color=0x1D9BF0
+            title=article['title'],
+            url=article['href'],
+            color=0x1D9BF0,  # 電蝦藍
         )
         embed.add_field(name='👤 作者', value=article['author'], inline=True)
         embed.add_field(name='🔥 推文', value=article['push'], inline=True)
 
         try:
             await channel.send(embed=embed)
-            await asyncio.sleep(1)
+            await asyncio.sleep(1)  # 延遲 1 秒避免 Discord 速率限制
         except Exception as e:
-            print(f'❌ 發送失敗: {e}')
+            print(f'❌ 訊息發送失敗: {e}')
 
 
 @bot.event
 async def on_ready():
-    print(f'✅ 機器人 {bot.user} 已上線')
+    print(f'✅ 機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
 
-    # 初始掃描避開舊文
-    print('📥 執行初始掃描...')
+    # 執行初始掃描，將目前頁面文章加入 seen_links，避免啟動時噴發舊文
     fetch_articles()
 
     if not check_ptt.is_running():
         check_ptt.start()
 
 
-# --- 主程式進入點 ---
 if __name__ == '__main__':
-    # 檢查環境變數是否正確載入
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確保 .env 檔案中包含 TOKEN 與 CHANNEL_ID')
+        print('❌ 錯誤：請確保環境變數 DISCORD_TOKEN 與 CHANNEL_ID 已設定')
     else:
         keep_alive()
         bot.run(TOKEN)
