@@ -15,21 +15,21 @@ from flask import Flask
 
 # --- 載入環境變數 ---
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv('TOKEN')
 RAW_ID = os.getenv('CHANNEL_ID')
 CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
 
-# --- Flask Keep Alive ---
+# --- Flask Keep Alive (確保 Render 存活) ---
 app = Flask(__name__)
 
 
 @app.route('/')
 def home():
-    return 'Bot is running!'
+    return 'Bot is alive and monitoring PTT!'
 
 
 def run():
-    # Render 會自動分配 PORT
+    # Render 會自動分配 Port 到環境變數，預設 8080
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
@@ -57,7 +57,7 @@ def fetch_articles():
         res = requests.get(PTT_URL, headers=headers, timeout=10)
         res.raise_for_status()
 
-        # 使用 lxml 解析 (對應你的 requirements.txt)
+        # 使用 lxml 解析
         soup = BeautifulSoup(res.text, 'lxml')
         entries = soup.select('div.r-ent')
         new_articles = []
@@ -82,15 +82,15 @@ def fetch_articles():
                     {'title': title, 'href': href, 'author': author, 'push': push}
                 )
 
-        return new_articles[::-1]
+        return new_articles[::-1]  # 確保新文章按時間順序發送
     except Exception as e:
         print(f'❌ 爬取失敗: {e}')
         return []
 
 
+# --- 定時監控任務 ---
 @tasks.loop(minutes=5)
 async def check_ptt():
-    # 強制轉型解決 Pylance 的頻道類型警告
     raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
     channel = cast(TextChannel, raw_channel)
 
@@ -101,34 +101,35 @@ async def check_ptt():
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'],
-            url=article['href'],
-            color=0x1D9BF0,  # 電蝦藍
+            title=article['title'], url=article['href'], color=0x1D9BF0
         )
         embed.add_field(name='👤 作者', value=article['author'], inline=True)
         embed.add_field(name='🔥 推文', value=article['push'], inline=True)
 
         try:
             await channel.send(embed=embed)
-            await asyncio.sleep(1)  # 延遲 1 秒避免 Discord 速率限制
+            await asyncio.sleep(1)  # 延遲 1 秒避免觸發速率限制
         except Exception as e:
             print(f'❌ 訊息發送失敗: {e}')
 
 
 @bot.event
 async def on_ready():
+    # 修正 sys 屬性存取
     print(f'✅ 機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
 
-    # 執行初始掃描，將目前頁面文章加入 seen_links，避免啟動時噴發舊文
+    # 執行初始掃描，避免啟動時將舊文章全部噴出
+    print('📥 正在進行初始掃描...')
     fetch_articles()
 
     if not check_ptt.is_running():
         check_ptt.start()
 
 
+# --- 主程式進入點 ---
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確保環境變數 DISCORD_TOKEN 與 CHANNEL_ID 已設定')
+        print('❌ 錯誤：請確認 .env 檔案或 Render 環境變數已設定 TOKEN 與 ID')
     else:
         keep_alive()
         bot.run(TOKEN)
