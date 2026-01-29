@@ -4,6 +4,7 @@
 ```env
 TOKEN=你的機器人TOKEN
 CHANNEL_ID=你的頻道ID
+PYTHON_VERSION=3.12.8
 ```
 ## 使用指南
 需求
@@ -59,6 +60,7 @@ pip install -r requirements.txt
 ```env
 TOKEN=你的機器人TOKEN
 CHANNEL_ID=你的頻道ID
+PYTHON_VERSION=3.12.8
 ```
 
 ## 5. 本機測試執行
