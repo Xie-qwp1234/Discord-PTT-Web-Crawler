@@ -13,23 +13,8 @@ from dotenv import load_dotenv
 from flask import Flask
 
 
-# 嘗試在最開頭解決 3.13 audioop 缺失問題
-try:
-    import audioop
-except ImportError:
-    try:
-        # 嘗試從音訊補丁套件載入
-        import audioop_lpm as audioop
-
-        sys.modules['audioop'] = audioop
-        print('✅ 已成功載入 Python 3.13 audioop 補丁')
-    except ImportError:
-        # 如果不使用語音功能，這樣可以防止 discord.py 在匯入時直接崩潰
-        print('⚠️ 警告：找不到 audioop。若 discord.py 報錯，請安裝 audioop-lpm')
-
 # --- 載入環境變數 ---
 load_dotenv()
-# 注意：你的環境變數 Key 必須與 Render 設定一致 (TOKEN 或 DISCORD_TOKEN)
 TOKEN = os.getenv('TOKEN')
 RAW_ID = os.getenv('CHANNEL_ID')
 CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
@@ -40,7 +25,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'Bot is alive and monitoring PTT!'
+    return 'PTT Bot is running!'
 
 
 def run():
@@ -57,7 +42,6 @@ def keep_alive():
 PTT_URL = 'https://www.ptt.cc/bbs/PC_Shopping/index.html'
 seen_links = set()
 
-# 針對 3.13 優化 intents
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -103,32 +87,30 @@ def fetch_articles():
 
 @tasks.loop(minutes=5)
 async def check_ptt():
-    try:
-        # 3.13 建議使用 get_partial_messageable 或確保 fetch
-        raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
-        channel = cast(TextChannel, raw_channel)
+    raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
+    channel = cast(TextChannel, raw_channel)
 
-        if not channel:
-            return
+    if not channel:
+        return
 
-        articles = fetch_articles()
-        for article in articles:
-            embed = discord.Embed(
-                title=article['title'], url=article['href'], color=0x1D9BF0
-            )
-            embed.add_field(name='👤 作者', value=article['author'], inline=True)
-            embed.add_field(name='🔥 推文', value=article['push'], inline=True)
+    articles = fetch_articles()
+    for article in articles:
+        embed = discord.Embed(
+            title=article['title'], url=article['href'], color=0x1D9BF0
+        )
+        embed.add_field(name='👤 作者', value=article['author'], inline=True)
+        embed.add_field(name='🔥 推文', value=article['push'], inline=True)
 
+        try:
             await channel.send(embed=embed)
             await asyncio.sleep(1)
-    except Exception as e:
-        print(f'⚠️ 迴圈執行異常: {e}')
+        except Exception as e:
+            print(f'❌ 發送失敗: {e}')
 
 
 @bot.event
 async def on_ready():
     print(f'✅ 機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
-    # 初始執行一次填充 seen_links
     fetch_articles()
     if not check_ptt.is_running():
         check_ptt.start()
@@ -136,10 +118,7 @@ async def on_ready():
 
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確認環境變數已設定')
+        print('❌ 錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
     else:
         keep_alive()
-        try:
-            bot.run(TOKEN)
-        except Exception as e:
-            print(f'❌ 啟動失敗: {e}')
+        bot.run(TOKEN)
