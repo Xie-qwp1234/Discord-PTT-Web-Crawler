@@ -43,6 +43,7 @@ PTT_URL = 'https://www.ptt.cc/bbs/PC_Shopping/index.html'
 seen_links = set()
 
 intents = discord.Intents.default()
+intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 
@@ -96,7 +97,7 @@ async def check_ptt():
     articles = fetch_articles()
     for article in articles:
         embed = discord.Embed(
-            title=article['title'], url=article['href'], color=0x00ff00
+            title=article['title'], url=article['href'], color=0x00FF00
         )
         embed.add_field(name='作者', value=article['author'], inline=True)
         embed.add_field(name='推文', value=article['push'], inline=True)
@@ -118,9 +119,13 @@ async def on_ready():
 
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('錯誤：請確認環境變數 TOKEN 與 CHANNEL_ID 已設定')
+        print('❌ 錯誤：環境變數未設定')
     else:
         keep_alive()
-        bot.run(TOKEN)
-
-
+        try:
+            bot.run(TOKEN)
+        except discord.errors.HTTPException as e:
+            if e.status == 429:
+                print('❌ 遭到 Rate Limit，請嘗試更換 Render Region 或稍後再試。')
+            else:
+                print(f'❌ 發生 HTTP 錯誤: {e}')
