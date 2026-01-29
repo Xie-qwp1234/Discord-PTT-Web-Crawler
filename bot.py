@@ -13,13 +13,28 @@ from dotenv import load_dotenv
 from flask import Flask
 
 
+# 嘗試在最開頭解決 3.13 audioop 缺失問題
+try:
+    import audioop
+except ImportError:
+    try:
+        # 嘗試從音訊補丁套件載入
+        import audioop_lpm as audioop
+
+        sys.modules['audioop'] = audioop
+        print('✅ 已成功載入 Python 3.13 audioop 補丁')
+    except ImportError:
+        # 如果不使用語音功能，這樣可以防止 discord.py 在匯入時直接崩潰
+        print('⚠️ 警告：找不到 audioop。若 discord.py 報錯，請安裝 audioop-lpm')
+
 # --- 載入環境變數 ---
 load_dotenv()
+# 注意：你的環境變數 Key 必須與 Render 設定一致 (TOKEN 或 DISCORD_TOKEN)
 TOKEN = os.getenv('TOKEN')
 RAW_ID = os.getenv('CHANNEL_ID')
 CHANNEL_ID = int(RAW_ID) if RAW_ID else 0
 
-# --- Flask Keep Alive (確保 Render 存活) ---
+# --- Flask Keep Alive ---
 app = Flask(__name__)
 
 
@@ -29,14 +44,12 @@ def home():
 
 
 def run():
-    # Render 會自動分配 Port 到環境變數，預設 8080
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
 
 def keep_alive():
-    t = Thread(target=run)
-    t.daemon = True
+    t = Thread(target=run, daemon=True)
     t.start()
 
 
@@ -44,6 +57,7 @@ def keep_alive():
 PTT_URL = 'https://www.ptt.cc/bbs/PC_Shopping/index.html'
 seen_links = set()
 
+# 針對 3.13 優化 intents
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -57,7 +71,6 @@ def fetch_articles():
         res = requests.get(PTT_URL, headers=headers, timeout=10)
         res.raise_for_status()
 
-        # 使用 lxml 解析
         soup = BeautifulSoup(res.text, 'lxml')
         entries = soup.select('div.r-ent')
         new_articles = []
@@ -82,54 +95,51 @@ def fetch_articles():
                     {'title': title, 'href': href, 'author': author, 'push': push}
                 )
 
-        return new_articles[::-1]  # 確保新文章按時間順序發送
+        return new_articles[::-1]
     except Exception as e:
         print(f'❌ 爬取失敗: {e}')
         return []
 
 
-# --- 定時監控任務 ---
 @tasks.loop(minutes=5)
 async def check_ptt():
-    raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
-    channel = cast(TextChannel, raw_channel)
+    try:
+        # 3.13 建議使用 get_partial_messageable 或確保 fetch
+        raw_channel = bot.get_channel(CHANNEL_ID) or await bot.fetch_channel(CHANNEL_ID)
+        channel = cast(TextChannel, raw_channel)
 
-    if not channel:
-        print(f'⚠️ 找不到頻道 ID: {CHANNEL_ID}')
-        return
+        if not channel:
+            return
 
-    articles = fetch_articles()
-    for article in articles:
-        embed = discord.Embed(
-            title=article['title'], url=article['href'], color=0x1D9BF0
-        )
-        embed.add_field(name='👤 作者', value=article['author'], inline=True)
-        embed.add_field(name='🔥 推文', value=article['push'], inline=True)
+        articles = fetch_articles()
+        for article in articles:
+            embed = discord.Embed(
+                title=article['title'], url=article['href'], color=0x1D9BF0
+            )
+            embed.add_field(name='👤 作者', value=article['author'], inline=True)
+            embed.add_field(name='🔥 推文', value=article['push'], inline=True)
 
-        try:
             await channel.send(embed=embed)
-            await asyncio.sleep(1)  # 延遲 1 秒避免觸發速率限制
-        except Exception as e:
-            print(f'❌ 訊息發送失敗: {e}')
+            await asyncio.sleep(1)
+    except Exception as e:
+        print(f'⚠️ 迴圈執行異常: {e}')
 
 
 @bot.event
 async def on_ready():
-    # 修正 sys 屬性存取
     print(f'✅ 機器人 {bot.user} 已上線 (Python {sys.version.split()[0]})')
-
-    # 執行初始掃描，避免啟動時將舊文章全部噴出
-    print('📥 正在進行初始掃描...')
+    # 初始執行一次填充 seen_links
     fetch_articles()
-
     if not check_ptt.is_running():
         check_ptt.start()
 
 
-# --- 主程式進入點 ---
 if __name__ == '__main__':
     if not TOKEN or CHANNEL_ID == 0:
-        print('❌ 錯誤：請確認 .env 檔案或 Render 環境變數已設定 TOKEN 與 ID')
+        print('❌ 錯誤：請確認環境變數已設定')
     else:
         keep_alive()
-        bot.run(TOKEN)
+        try:
+            bot.run(TOKEN)
+        except Exception as e:
+            print(f'❌ 啟動失敗: {e}')

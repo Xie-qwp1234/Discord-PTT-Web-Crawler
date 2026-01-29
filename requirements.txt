@@ -1,6 +1,7 @@
-discord.py==2.3.2
-requests==2.31.0
-beautifulsoup4==4.12.2
-python-dotenv==1.0.0
-Flask==3.0.0
-lxml==5.1.0
+discord.py>=2.4.0
+audioop-lpm
+requests~=2.31.0
+beautifulsoup4~=4.12.2
+python-dotenv~=1.0.0
+Flask~=3.0.0
+lxml~=5.1.0
