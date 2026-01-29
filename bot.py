@@ -140,4 +140,3 @@ if __name__ == '__main__':
             if e.status == 429:
                 print('遭 Discord 限制 (429 Rate Limit)')
             raise e
-
